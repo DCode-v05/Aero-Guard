@@ -1,0 +1,24 @@
+# Data handling
+pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+
+# Machine Learning / Deep Learning
+tensorflow>=2.13.0
+
+# Visualization & Dashboard
+matplotlib>=3.7.0
+plotly>=5.15.0
+streamlit>=1.28.0
+streamlit-autorefresh>=1.0.1
+streamlit-option-menu>=0.3.6
+
+# Additional UI components
+streamlit-aggrid>=0.3.4
+
+# Optional for drone SDKs (if using Tello or Crazyflie)
+# djitellopy  # Tello Python SDK
+# cflib  # Crazyflie Python SDK
+
+# Utilities
+joblib>=1.3.0
