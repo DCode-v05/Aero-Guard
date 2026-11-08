@@ -11,7 +11,6 @@ from streamlit_option_menu import option_menu
 import warnings
 warnings.filterwarnings('ignore')
 
-# Page configuration
 st.set_page_config(
     page_title="Drone Flight Anomaly Detection Dashboard",
     page_icon="🚁",
@@ -19,7 +18,6 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
 st.markdown("""
 <style>
     .main-header {
@@ -69,7 +67,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Load data
 @st.cache_data
 def load_data():
     try:
@@ -79,18 +76,15 @@ def load_data():
         st.error("drone_telemetry.csv file not found. Please ensure the data file exists.")
         return None
 
-# Simulate real-time data
 def simulate_realtime_data(df, current_time):
     """Simulate real-time streaming by selecting data based on current time"""
     if df is None:
         return None
     
-    # Calculate which data points to show based on time
     total_points = len(df)
-    points_to_show = (current_time % 100) + 50  # Show 50-150 points cyclically
+    points_to_show = (current_time % 100) + 50
     return df.head(points_to_show)
 
-# Anomaly detection function
 def detect_anomalies_simple(df):
     """Simple anomaly detection based on statistical thresholds"""
     if df is None or len(df) == 0:
@@ -98,7 +92,6 @@ def detect_anomalies_simple(df):
     
     df = df.copy()
     
-    # Define normal ranges for each parameter
     normal_ranges = {
         'altitude': (8, 15),
         'velocity': (0.5, 2.0),
@@ -108,7 +101,6 @@ def detect_anomalies_simple(df):
         'gps_drift': (-0.5, 0.5)
     }
     
-    # Calculate anomalies based on ranges
     df['altitude_anomaly'] = ~df['altitude'].between(*normal_ranges['altitude'])
     df['velocity_anomaly'] = ~df['velocity'].between(*normal_ranges['velocity'])
     df['yaw_anomaly'] = ~df['yaw'].between(*normal_ranges['yaw'])
@@ -116,7 +108,6 @@ def detect_anomalies_simple(df):
     df['battery_anomaly'] = ~df['battery'].between(*normal_ranges['battery'])
     df['gps_anomaly'] = ~df['gps_drift'].between(*normal_ranges['gps_drift'])
     
-    # Overall anomaly if any parameter is anomalous
     df['detected_anomaly'] = (df['altitude_anomaly'] | df['velocity_anomaly'] | 
                             df['yaw_anomaly'] | df['pitch_anomaly'] | 
                             df['battery_anomaly'] | df['gps_anomaly'])
@@ -124,44 +115,34 @@ def detect_anomalies_simple(df):
     return df
 
 def main():
-    # Header
     st.markdown('<h1 class="main-header">🚁 Drone Flight Anomaly Detection Dashboard</h1>', unsafe_allow_html=True)
     
-    # Auto-refresh every 2 seconds
     count = st_autorefresh(interval=2000, limit=None, key="data_refresh")
     
-    # Load and process data
     df = load_data()
     if df is None:
         st.stop()
     
-    # Simulate real-time data
     current_data = simulate_realtime_data(df, count)
     if current_data is None or len(current_data) == 0:
         st.warning("No data available")
         st.stop()
     
-    # Detect anomalies
     processed_data = detect_anomalies_simple(current_data)
     
-    # Sidebar configuration
     st.sidebar.header("🎛️ Dashboard Controls")
     
-    # Flight selection
     available_flights = sorted(processed_data['flight'].unique())
     selected_flight = st.sidebar.selectbox("Select Flight", available_flights)
     
-    # Filter data for selected flight
     flight_data = processed_data[processed_data['flight'] == selected_flight].copy()
     
-    # Real-time status
     current_time = datetime.now()
     st.sidebar.markdown("### 📡 System Status")
     st.sidebar.markdown(f"**Last Update:** {current_time.strftime('%H:%M:%S')}")
     st.sidebar.markdown(f"**Data Points:** {len(flight_data)}")
     st.sidebar.markdown(f"**Flight ID:** {selected_flight}")
     
-    # Calculate current anomaly status
     recent_anomalies = flight_data.tail(10)['detected_anomaly'].sum()
     if recent_anomalies >= 5:
         status = "🔴 CRITICAL"
@@ -180,10 +161,8 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Main dashboard layout
     col1, col2, col3, col4 = st.columns(4)
     
-    # Current metrics
     if len(flight_data) > 0:
         latest = flight_data.iloc[-1]
         
@@ -215,11 +194,10 @@ def main():
                 delta=f"{latest['gps_drift'] - flight_data.iloc[-2]['gps_drift'] if len(flight_data) > 1 else 0:.3f}"
             )
     
-    # Alert section
     anomaly_count = flight_data['detected_anomaly'].sum()
     total_points = len(flight_data)
     
-    if anomaly_count > total_points * 0.1:  # More than 10% anomalies
+    if anomaly_count > total_points * 0.1:
         st.markdown(f"""
         <div class="alert-box alert-danger">
             <strong>🚨 HIGH ANOMALY ALERT!</strong><br>
@@ -241,20 +219,17 @@ def main():
         </div>
         """, unsafe_allow_html=True)
     
-    # Create tabs for different visualizations
     tab1, tab2, tab3, tab4 = st.tabs(["📈 Real-time Monitoring", "🎯 Anomaly Analysis", "📊 Parameter Details", "🗺️ Flight Path"])
     
     with tab1:
         st.subheader("Real-time Flight Parameters")
         
-        # Create subplots for real-time monitoring
         fig = make_subplots(
             rows=3, cols=2,
             subplot_titles=['Altitude Over Time', 'Velocity Over Time', 'Yaw & Pitch', 'Battery Level', 'GPS Drift', 'Anomaly Detection'],
             vertical_spacing=0.08
         )
         
-        # Altitude
         fig.add_trace(go.Scatter(
             x=flight_data['timestep'], 
             y=flight_data['altitude'],
@@ -264,7 +239,6 @@ def main():
             marker=dict(size=4)
         ), row=1, col=1)
         
-        # Velocity
         fig.add_trace(go.Scatter(
             x=flight_data['timestep'], 
             y=flight_data['velocity'],
@@ -274,7 +248,6 @@ def main():
             marker=dict(size=4)
         ), row=1, col=2)
         
-        # Yaw and Pitch
         fig.add_trace(go.Scatter(
             x=flight_data['timestep'], 
             y=flight_data['yaw'],
@@ -291,7 +264,6 @@ def main():
             line=dict(color='purple', width=2)
         ), row=2, col=1)
         
-        # Battery
         fig.add_trace(go.Scatter(
             x=flight_data['timestep'], 
             y=flight_data['battery'],
@@ -301,7 +273,6 @@ def main():
             marker=dict(size=4)
         ), row=2, col=2)
         
-        # GPS Drift
         fig.add_trace(go.Scatter(
             x=flight_data['timestep'], 
             y=flight_data['gps_drift'],
@@ -311,7 +282,6 @@ def main():
             marker=dict(size=4)
         ), row=3, col=1)
         
-        # Anomaly detection
         anomaly_points = flight_data[flight_data['detected_anomaly']]
         fig.add_trace(go.Scatter(
             x=flight_data['timestep'], 
@@ -341,7 +311,6 @@ def main():
         col1, col2 = st.columns(2)
         
         with col1:
-            # Anomaly distribution pie chart
             normal_count = len(flight_data) - anomaly_count
             
             fig_pie = go.Figure(data=[go.Pie(
@@ -354,7 +323,6 @@ def main():
             st.plotly_chart(fig_pie, use_container_width=True)
         
         with col2:
-            # Parameter-wise anomaly count
             param_anomalies = {
                 'Altitude': flight_data['altitude_anomaly'].sum(),
                 'Velocity': flight_data['velocity_anomaly'].sum(),
@@ -372,7 +340,6 @@ def main():
             fig_bar.update_layout(title="Anomalies by Parameter", height=400)
             st.plotly_chart(fig_bar, use_container_width=True)
         
-        # Anomaly timeline
         st.subheader("Anomaly Timeline")
         anomaly_timeline = flight_data[flight_data['detected_anomaly']].copy()
         
@@ -403,12 +370,10 @@ def main():
     with tab3:
         st.subheader("Detailed Parameter Analysis")
         
-        # Statistical summary
         st.subheader("📊 Statistical Summary")
         stats_df = flight_data[['altitude', 'velocity', 'yaw', 'pitch', 'battery', 'gps_drift']].describe()
         st.dataframe(stats_df, use_container_width=True)
         
-        # Parameter correlation heatmap
         st.subheader("🔗 Parameter Correlations")
         corr_matrix = flight_data[['altitude', 'velocity', 'yaw', 'pitch', 'battery', 'gps_drift']].corr()
         
@@ -421,7 +386,6 @@ def main():
         )
         st.plotly_chart(fig_heatmap, use_container_width=True)
         
-        # Distribution plots
         st.subheader("📈 Parameter Distributions")
         selected_param = st.selectbox("Select Parameter for Distribution", 
                                     ['altitude', 'velocity', 'yaw', 'pitch', 'battery', 'gps_drift'])
@@ -444,10 +408,8 @@ def main():
     with tab4:
         st.subheader("Flight Path Visualization")
         
-        # 3D flight path (using altitude as Z-axis and timestep as trajectory)
         fig_3d = go.Figure()
         
-        # Normal points
         normal_points = flight_data[~flight_data['detected_anomaly']]
         anomaly_points = flight_data[flight_data['detected_anomaly']]
         
@@ -483,7 +445,6 @@ def main():
         )
         st.plotly_chart(fig_3d, use_container_width=True)
         
-        # Flight trajectory over time
         col1, col2 = st.columns(2)
         
         with col1:
@@ -522,7 +483,6 @@ def main():
                 )
             st.plotly_chart(fig_vel_time, use_container_width=True)
     
-    # Footer
     st.markdown("---")
     st.markdown(
         "<div style='text-align: center; color: gray;'>"

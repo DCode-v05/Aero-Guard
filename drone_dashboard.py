@@ -13,7 +13,6 @@ from streamlit_autorefresh import st_autorefresh
 import warnings
 warnings.filterwarnings('ignore')
 
-# Configure page
 st.set_page_config(
     page_title="Drone Anomaly Detection System",
     page_icon="🚁",
@@ -21,7 +20,6 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for better UI
 st.markdown("""
 <style>
     /* Hide default Streamlit elements */
@@ -156,7 +154,6 @@ class DroneAnomalyModel:
         try:
             features = data[self.feature_columns]
             
-            # Store training statistics
             self.training_stats = {
                 'mean': features.mean().to_dict(),
                 'std': features.std().to_dict(),
@@ -164,10 +161,8 @@ class DroneAnomalyModel:
                 'max': features.max().to_dict()
             }
             
-            # Scale features
             scaled_features = self.scaler.fit_transform(features)
             
-            # Train model
             self.model.fit(scaled_features)
             self.is_trained = True
             
@@ -185,14 +180,11 @@ class DroneAnomalyModel:
             features = data[self.feature_columns]
             scaled_features = self.scaler.transform(features)
             
-            # Predict anomalies (-1 = anomaly, 1 = normal)
             predictions = self.model.predict(scaled_features)
             anomaly_scores = self.model.score_samples(scaled_features)
             
-            # Convert predictions to binary (1 = anomaly, 0 = normal)
             anomalies = (predictions == -1).astype(int)
             
-            # Calculate confidence scores (normalized)
             confidence = np.abs(anomaly_scores)
             confidence = (confidence - confidence.min()) / (confidence.max() - confidence.min() + 1e-8)
             
@@ -201,7 +193,6 @@ class DroneAnomalyModel:
             results['anomaly_score'] = anomaly_scores
             results['confidence'] = confidence
             
-            # Add statistical anomalies for comparison
             stat_anomalies = np.zeros(len(data))
             for col in self.feature_columns:
                 mean_val = self.training_stats['mean'][col]
@@ -242,7 +233,6 @@ def initialize_model():
     return DroneAnomalyModel()
 
 def create_dashboard():
-    # Header
     st.markdown("""
     <div class="main-header">
         <div class="main-title">🚁 Drone Flight Anomaly Detection System</div>
@@ -250,17 +240,14 @@ def create_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    # Load data automatically
     with st.spinner("🔄 Loading drone telemetry data..."):
         df = load_data()
     
     if df is None:
         st.stop()
     
-    # Initialize model
     model = initialize_model()
     
-    # Auto-train model on first run
     if not model.is_trained:
         with st.spinner("🤖 Training anomaly detection model..."):
             success, message = model.train_model(df)
@@ -270,26 +257,21 @@ def create_dashboard():
                 st.error(f"❌ {message}")
                 st.stop()
     
-    # Sidebar for controls
     with st.sidebar:
         st.markdown("### 🎛️ Control Panel")
         
-        # Flight selection
         flights = sorted(df['flight'].unique())
         selected_flight = st.selectbox("🛩️ Select Flight", flights, index=0)
         
-        # Time range
         flight_data = df[df['flight'] == selected_flight]
         max_time = int(flight_data['timestep'].max())
         time_range = st.slider("⏱️ Time Range", 0, max_time, (0, min(100, max_time)))
         
-        # Auto-refresh toggle
         auto_refresh = st.toggle("🔄 Auto Refresh", value=True)
         
         if auto_refresh:
             st_autorefresh(interval=3000, key="refresh")
         
-        # Model info
         st.markdown("### 🤖 Model Status")
         st.markdown(f"""
         <div class="info-box">
@@ -300,7 +282,6 @@ def create_dashboard():
         </div>
         """, unsafe_allow_html=True)
     
-    # Filter data based on selection
     filtered_data = df[
         (df['flight'] == selected_flight) & 
         (df['timestep'] >= time_range[0]) & 
@@ -311,7 +292,6 @@ def create_dashboard():
         st.warning("⚠️ No data found for selected filters.")
         st.stop()
     
-    # Make predictions
     with st.spinner("🔮 Generating predictions..."):
         predictions, pred_message = model.predict_anomalies(filtered_data)
     
@@ -319,13 +299,11 @@ def create_dashboard():
         st.error(f"❌ {pred_message}")
         st.stop()
     
-    # Calculate key metrics
     total_points = len(predictions)
     ml_anomalies = predictions['predicted_anomaly'].sum()
     stat_anomalies = predictions['statistical_anomaly'].sum()
     ml_anomaly_rate = (ml_anomalies / total_points * 100) if total_points > 0 else 0
     
-    # Determine system status
     if ml_anomaly_rate > 15:
         status = "CRITICAL ALERT"
         status_class = "status-critical"
@@ -339,7 +317,6 @@ def create_dashboard():
         status_class = "status-normal"
         status_icon = "✅"
     
-    # Main metrics row
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -380,7 +357,6 @@ def create_dashboard():
         """.format(avg_confidence * 100), unsafe_allow_html=True)
     
 
-    # Create visualizations
     st.markdown("## 📈 Real-time Flight Analysis")
     
     
@@ -394,15 +370,12 @@ def create_dashboard():
         horizontal_spacing=0.08
     )
     
-    # Color scheme
     normal_color = '#2E86AB'
     anomaly_color = '#F24236'
     
-    # Separate normal and anomaly points
     normal_data = predictions[predictions['predicted_anomaly'] == 0]
     anomaly_data = predictions[predictions['predicted_anomaly'] == 1]
     
-    # Altitude
     fig.add_trace(go.Scatter(
         x=normal_data['timestep'], y=normal_data['altitude'],
         mode='lines+markers', name='Normal Altitude',
@@ -418,7 +391,6 @@ def create_dashboard():
             showlegend=False
         ), row=1, col=1)
     
-    # Velocity
     fig.add_trace(go.Scatter(
         x=normal_data['timestep'], y=normal_data['velocity'],
         mode='lines+markers', name='Normal Velocity',
@@ -434,7 +406,6 @@ def create_dashboard():
             showlegend=False
         ), row=1, col=2)
     
-    # Battery
     fig.add_trace(go.Scatter(
         x=predictions['timestep'], y=predictions['battery'],
         mode='lines+markers', name='Battery Level',
@@ -442,7 +413,6 @@ def create_dashboard():
         marker=dict(size=4), showlegend=False
     ), row=1, col=3)
     
-    # Yaw and Pitch
     fig.add_trace(go.Scatter(
         x=predictions['timestep'], y=predictions['yaw'],
         mode='lines', name='Yaw', line=dict(color='#C73E1D', width=2),
@@ -455,7 +425,6 @@ def create_dashboard():
         showlegend=False
     ), row=2, col=1)
     
-    # GPS Drift
     fig.add_trace(go.Scatter(
         x=normal_data['timestep'], y=normal_data['gps_drift'],
         mode='lines+markers', name='Normal GPS',
@@ -471,7 +440,6 @@ def create_dashboard():
             showlegend=False
         ), row=2, col=2)
     
-    # Anomaly detection timeline
     fig.add_trace(go.Scatter(
         x=predictions['timestep'], y=predictions['predicted_anomaly'],
         mode='markers', name='ML Predictions',
@@ -501,7 +469,6 @@ def create_dashboard():
     st.plotly_chart(fig, use_container_width=True)
     
     
-    # Additional analysis
     col1, col2 = st.columns(2)
     
     with col1:
@@ -525,13 +492,11 @@ def create_dashboard():
         st.markdown("### 📊 Parameter Analysis")
         
         
-        # Parameter selection for detailed view
         param = st.selectbox("Select Parameter", model.feature_columns, 
                            format_func=lambda x: x.replace('_', ' ').title())
         
         fig_param = go.Figure()
         
-        # Normal points
         fig_param.add_trace(go.Scatter(
             x=normal_data['timestep'], 
             y=normal_data[param],
@@ -540,7 +505,6 @@ def create_dashboard():
             marker=dict(color=normal_color, size=6, opacity=0.7)
         ))
         
-        # Anomaly points
         if len(anomaly_data) > 0:
             fig_param.add_trace(go.Scatter(
                 x=anomaly_data['timestep'], 
@@ -550,7 +514,6 @@ def create_dashboard():
                 marker=dict(color=anomaly_color, size=10, symbol='x')
             ))
         
-        # Add statistical thresholds
         if param in model.training_stats['mean']:
             mean_val = model.training_stats['mean'][param]
             std_val = model.training_stats['std'][param]
@@ -581,11 +544,9 @@ def create_dashboard():
         st.plotly_chart(fig_param, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
     
-    # Summary table
     st.markdown("### 📋 Detailed Anomaly Summary")
     
     
-    # Show recent anomalies
     recent_anomalies = predictions[predictions['predicted_anomaly'] == 1].tail(10)
     
     if len(recent_anomalies) > 0:
@@ -601,7 +562,6 @@ def create_dashboard():
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Footer
     st.markdown("---")
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     st.markdown(f"""

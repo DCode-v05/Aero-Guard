@@ -14,7 +14,6 @@ from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
 
-# Advanced anomaly detection class
 class DroneAnomalyDetector:
     def __init__(self):
         self.scaler = MinMaxScaler()
@@ -31,13 +30,10 @@ class DroneAnomalyDetector:
         """Train the anomaly detection model"""
         features = data[self.feature_columns]
         
-        # Scale features
         scaled_features = self.scaler.fit_transform(features)
         
-        # Fit isolation forest
         self.isolation_forest.fit(scaled_features)
         
-        # Calculate statistical thresholds
         for col in self.feature_columns:
             mean_val = data[col].mean()
             std_val = data[col].std()
@@ -59,11 +55,9 @@ class DroneAnomalyDetector:
         features = data[self.feature_columns]
         scaled_features = self.scaler.transform(features)
         
-        # Isolation Forest predictions (-1 for anomaly, 1 for normal)
         isolation_predictions = self.isolation_forest.predict(scaled_features)
         isolation_scores = self.isolation_forest.score_samples(scaled_features)
         
-        # Statistical threshold predictions
         statistical_anomalies = np.zeros(len(data))
         threshold_details = {}
         
@@ -75,10 +69,9 @@ class DroneAnomalyDetector:
             statistical_anomalies += col_anomalies
             threshold_details[f'{col}_anomaly'] = col_anomalies.astype(bool)
         
-        # Combine predictions
         combined_anomalies = (
             (isolation_predictions == -1) |
-            (statistical_anomalies >= 2)  # At least 2 parameters out of range
+            (statistical_anomalies >= 2)
         ).astype(int)
         
         results = data.copy()
@@ -88,7 +81,6 @@ class DroneAnomalyDetector:
         results['combined_anomaly'] = combined_anomalies
         results['anomaly_score'] = statistical_anomalies
         
-        # Add individual parameter anomalies
         for col, anomaly_data in threshold_details.items():
             results[col] = anomaly_data.astype(int)
         
@@ -99,12 +91,10 @@ class DroneAnomalyDetector:
         if not self.is_fitted:
             return None
         
-        # This is a simplified importance measure
         importance = {}
         for col in self.feature_columns:
             importance[col] = 1.0 / (self.thresholds[col]['std'] + 1e-6)
         
-        # Normalize
         total_importance = sum(importance.values())
         for col in importance:
             importance[col] /= total_importance
@@ -136,7 +126,6 @@ def create_advanced_dashboard():
         initial_sidebar_state="expanded"
     )
     
-    # Custom CSS
     st.markdown("""
     <style>
         .big-font {
@@ -173,23 +162,18 @@ def create_advanced_dashboard():
     </style>
     """, unsafe_allow_html=True)
     
-    # Header
     st.markdown("# 🚁 Advanced Drone Flight Anomaly Detection System")
     st.markdown("### Real-time monitoring and intelligent anomaly detection for drone operations")
     
-    # Load data
     df = load_and_process_data()
     if df is None:
         st.stop()
     
-    # Train anomaly detector
     with st.spinner("Training anomaly detection model..."):
         detector = train_anomaly_detector(df)
     
-    # Sidebar controls
     st.sidebar.header("🎛️ Control Panel")
     
-    # Flight selection
     flights = sorted(df['flight'].unique())
     selected_flights = st.sidebar.multiselect(
         "Select Flights to Analyze",
@@ -201,16 +185,13 @@ def create_advanced_dashboard():
         st.warning("Please select at least one flight to analyze.")
         st.stop()
     
-    # Filter data
     filtered_df = df[df['flight'].isin(selected_flights)].copy()
     
-    # Detection method selection
     detection_method = st.sidebar.selectbox(
         "Anomaly Detection Method",
         ["Combined (Recommended)", "Isolation Forest", "Statistical Thresholds", "Ground Truth"]
     )
     
-    # Time range selection
     max_timesteps = filtered_df['timestep'].max()
     time_range = st.sidebar.slider(
         "Time Range",
@@ -219,17 +200,14 @@ def create_advanced_dashboard():
         step=1
     )
     
-    # Filter by time range
     time_filtered_df = filtered_df[
         (filtered_df['timestep'] >= time_range[0]) & 
         (filtered_df['timestep'] <= time_range[1])
     ].copy()
     
-    # Predict anomalies
     with st.spinner("Detecting anomalies..."):
         results = detector.predict_anomalies(time_filtered_df)
     
-    # Select anomaly column based on method
     anomaly_col_map = {
         "Combined (Recommended)": "combined_anomaly",
         "Isolation Forest": "isolation_anomaly",
@@ -238,12 +216,10 @@ def create_advanced_dashboard():
     }
     anomaly_col = anomaly_col_map[detection_method]
     
-    # Calculate metrics
     total_points = len(results)
     anomaly_count = results[anomaly_col].sum()
     anomaly_rate = (anomaly_count / total_points) * 100 if total_points > 0 else 0
     
-    # Status determination
     if anomaly_rate > 20:
         status = "🔴 CRITICAL"
         status_class = "alert-critical"
@@ -254,7 +230,6 @@ def create_advanced_dashboard():
         status = "🟢 NORMAL"
         status_class = "alert-success"
     
-    # Main metrics
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
@@ -287,7 +262,6 @@ def create_advanced_dashboard():
             delta=f"{len(selected_flights)} total"
         )
     
-    # Status alert
     st.markdown(f"""
     <div class="{status_class}">
         <strong>System Status: {status}</strong><br>
@@ -295,7 +269,6 @@ def create_advanced_dashboard():
     </div>
     """, unsafe_allow_html=True)
     
-    # Create tabs
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📊 Overview Dashboard", 
         "🔍 Anomaly Analysis", 
@@ -307,7 +280,6 @@ def create_advanced_dashboard():
     with tab1:
         st.subheader("Real-time Flight Monitoring Dashboard")
         
-        # Main monitoring plot
         fig = make_subplots(
             rows=3, cols=2,
             subplot_titles=[
@@ -318,11 +290,9 @@ def create_advanced_dashboard():
             vertical_spacing=0.1
         )
         
-        # Color anomalies differently
         normal_mask = results[anomaly_col] == 0
         anomaly_mask = results[anomaly_col] == 1
         
-        # Altitude
         fig.add_trace(go.Scatter(
             x=results[normal_mask]['timestep'], 
             y=results[normal_mask]['altitude'],
@@ -341,7 +311,6 @@ def create_advanced_dashboard():
                 marker=dict(color='red', size=6, symbol='x')
             ), row=1, col=1)
         
-        # Velocity
         fig.add_trace(go.Scatter(
             x=results[normal_mask]['timestep'], 
             y=results[normal_mask]['velocity'],
@@ -360,7 +329,6 @@ def create_advanced_dashboard():
                 marker=dict(color='red', size=6, symbol='x')
             ), row=1, col=2)
         
-        # Yaw and Pitch
         fig.add_trace(go.Scatter(
             x=results['timestep'], y=results['yaw'],
             mode='lines', name='Yaw',
@@ -373,7 +341,6 @@ def create_advanced_dashboard():
             line=dict(color='purple')
         ), row=2, col=1)
         
-        # Battery
         fig.add_trace(go.Scatter(
             x=results['timestep'], y=results['battery'],
             mode='lines+markers', name='Battery',
@@ -381,7 +348,6 @@ def create_advanced_dashboard():
             marker=dict(size=3)
         ), row=2, col=2)
         
-        # GPS Drift
         fig.add_trace(go.Scatter(
             x=results['timestep'], y=results['gps_drift'],
             mode='lines+markers', name='GPS Drift',
@@ -389,7 +355,6 @@ def create_advanced_dashboard():
             marker=dict(size=3)
         ), row=3, col=1)
         
-        # Anomaly timeline
         fig.add_trace(go.Scatter(
             x=results['timestep'], 
             y=results[anomaly_col],
@@ -405,7 +370,6 @@ def create_advanced_dashboard():
         fig.update_layout(height=800, showlegend=True)
         st.plotly_chart(fig, use_container_width=True)
         
-        # Real-time statistics
         col1, col2 = st.columns(2)
         
         with col1:
@@ -444,11 +408,9 @@ def create_advanced_dashboard():
     with tab2:
         st.subheader("Detailed Anomaly Analysis")
         
-        # Anomaly type breakdown
         col1, col2 = st.columns(2)
         
         with col1:
-            # Parameter-specific anomalies
             param_cols = [col for col in results.columns if col.endswith('_anomaly') and col != 'combined_anomaly']
             param_anomaly_counts = {}
             for col in param_cols:
@@ -469,7 +431,6 @@ def create_advanced_dashboard():
                 st.plotly_chart(fig_params, use_container_width=True)
         
         with col2:
-            # Anomaly severity distribution
             if 'anomaly_score' in results.columns:
                 fig_severity = px.histogram(
                     results[results[anomaly_col] == 1],
@@ -480,7 +441,6 @@ def create_advanced_dashboard():
                 )
                 st.plotly_chart(fig_severity, use_container_width=True)
         
-        # Anomaly correlation heatmap
         st.subheader("Parameter Anomaly Correlations")
         anomaly_corr_cols = [col for col in results.columns if col.endswith('_anomaly')]
         if len(anomaly_corr_cols) > 1:
@@ -495,9 +455,8 @@ def create_advanced_dashboard():
             )
             st.plotly_chart(fig_corr, use_container_width=True)
         
-        # Time-based anomaly patterns
         st.subheader("Temporal Anomaly Patterns")
-        results['time_window'] = (results['timestep'] // 10) * 10  # Group by 10-timestep windows
+        results['time_window'] = (results['timestep'] // 10) * 10
         temporal_anomalies = results.groupby('time_window')[anomaly_col].agg(['count', 'sum']).reset_index()
         temporal_anomalies['anomaly_rate'] = temporal_anomalies['sum'] / temporal_anomalies['count']
         
@@ -519,7 +478,6 @@ def create_advanced_dashboard():
     with tab3:
         st.subheader("Parameter Monitoring and Thresholds")
         
-        # Feature importance
         importance = detector.get_feature_importance()
         if importance:
             col1, col2 = st.columns(2)
@@ -538,7 +496,6 @@ def create_advanced_dashboard():
                 st.plotly_chart(fig_importance, use_container_width=True)
             
             with col2:
-                # Threshold visualization
                 st.subheader("Statistical Thresholds")
                 threshold_data = []
                 for param, thresholds in detector.thresholds.items():
@@ -551,7 +508,6 @@ def create_advanced_dashboard():
                     })
                 st.dataframe(pd.DataFrame(threshold_data), use_container_width=True)
         
-        # Parameter distributions with thresholds
         st.subheader("Parameter Distributions with Anomaly Thresholds")
         
         selected_param = st.selectbox(
@@ -571,7 +527,6 @@ def create_advanced_dashboard():
                 color_discrete_map={0: 'blue', 1: 'red'}
             )
             
-            # Add threshold lines
             if selected_param in detector.thresholds:
                 thresholds = detector.thresholds[selected_param]
                 fig_dist.add_vline(
@@ -596,7 +551,6 @@ def create_advanced_dashboard():
             st.plotly_chart(fig_dist, use_container_width=True)
         
         with col2:
-            # Box plot for parameter
             fig_box = px.box(
                 results,
                 y=selected_param,
@@ -609,12 +563,10 @@ def create_advanced_dashboard():
     with tab4:
         st.subheader("Model Performance Analysis")
         
-        # Performance metrics (if ground truth available)
         if 'anomaly' in results.columns and anomaly_col != 'anomaly':
             col1, col2 = st.columns(2)
             
             with col1:
-                # Confusion matrix
                 y_true = results['anomaly']
                 y_pred = results[anomaly_col]
                 
@@ -631,7 +583,6 @@ def create_advanced_dashboard():
                 st.plotly_chart(fig_cm, use_container_width=True)
             
             with col2:
-                # Classification report
                 report = classification_report(y_true, y_pred, output_dict=True)
                 
                 metrics_df = pd.DataFrame({
@@ -659,11 +610,9 @@ def create_advanced_dashboard():
                 )
                 st.plotly_chart(fig_metrics, use_container_width=True)
                 
-                # Overall accuracy
                 accuracy = (y_true == y_pred).mean()
                 st.metric("Overall Accuracy", f"{accuracy:.3f}")
         
-        # Model diagnostics
         st.subheader("Anomaly Score Distribution")
         if 'isolation_score' in results.columns:
             fig_scores = px.histogram(
@@ -676,7 +625,6 @@ def create_advanced_dashboard():
             )
             st.plotly_chart(fig_scores, use_container_width=True)
         
-        # Feature scaling impact
         st.subheader("Feature Scaling Visualization")
         original_features = results[detector.feature_columns]
         scaled_features = detector.scaler.transform(original_features)
@@ -695,7 +643,6 @@ def create_advanced_dashboard():
     with tab5:
         st.subheader("Detailed Data Explorer")
         
-        # Filter options
         col1, col2, col3 = st.columns(3)
         
         with col1:
@@ -711,7 +658,6 @@ def create_advanced_dashboard():
         with col3:
             export_data = st.button("Export Data")
         
-        # Filter data
         display_data = results.copy()
         if show_only_anomalies:
             display_data = display_data[display_data[anomaly_col] == 1]
@@ -719,14 +665,12 @@ def create_advanced_dashboard():
         if selected_columns:
             display_data = display_data[selected_columns]
         
-        # Display data
         st.dataframe(
             display_data,
             use_container_width=True,
             height=400
         )
         
-        # Export functionality
         if export_data:
             csv = display_data.to_csv(index=False)
             st.download_button(
@@ -736,7 +680,6 @@ def create_advanced_dashboard():
                 mime="text/csv"
             )
         
-        # Data summary
         st.subheader("Data Summary")
         col1, col2, col3 = st.columns(3)
         

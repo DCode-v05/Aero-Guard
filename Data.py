@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 
-# Parameters
 n_flights = 50
 timesteps = 200
 
@@ -15,7 +14,6 @@ for flight in range(n_flights):
     normal_battery = np.linspace(100, 80, timesteps)
     normal_gps = np.random.normal(0, 0.05, timesteps)
 
-    # Inject anomalies randomly
     anomaly_idx = np.random.choice(timesteps, size=5, replace=False)
     normal_altitude[anomaly_idx] += np.random.normal(2, 0.5, size=5)
     normal_velocity[anomaly_idx] += np.random.normal(2, 0.5, size=5)
@@ -32,7 +30,6 @@ for flight in range(n_flights):
         'gps_drift': normal_gps,
     })
 
-    # Label anomalies (for evaluation)
     df['anomaly'] = 0
     df.loc[anomaly_idx, 'anomaly'] = 1
 
